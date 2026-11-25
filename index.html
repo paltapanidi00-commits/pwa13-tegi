@@ -1,0 +1,183 @@
+
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2457c5">
+<title>Smart Request Manager</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f1f4f9;
+  margin: 0;
+  padding: 20px;
+  color: #222;
+}
+.container {
+  max-width: 650px;
+  margin: auto;
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  box-shadow: 0 3px 15px #0001;
+}
+h1 { color: #2457c5; }
+input, button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  margin: 7px 0;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+}
+button {
+  background: #2457c5;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+.item {
+  padding: 12px;
+  margin-top: 10px;
+  background: #f1f4f9;
+  border-radius: 8px;
+}
+.item button { width: auto; margin-right: 5px; }
+.done { color: green; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 id="heading">Smart Request Manager</h1>
+  <button id="language">Русский</button>
+  <h3 id="formTitle">Жаңа өтінім қосу</h3>
+
+  <input id="request" placeholder="Өтінім атауы">
+  <input id="amount" type="number" min="0.01" step="0.01" placeholder="Сомасы (₸)">
+  <input id="person" placeholder="Жауапты қызметкер">
+
+  <button id="add">Өтінім қосу</button>
+  <h3 id="listTitle">Өтінімдер тізімі</h3>
+  <div id="list"></div>
+</div>
+
+<script>
+let requests = [];
+try {
+  requests = JSON.parse(localStorage.getItem("requests") || "[]");
+  if (!Array.isArray(requests)) requests = [];
+} catch {
+  requests = [];
+}
+
+let lang = "kk";
+
+const words = {
+ kk: {
+  form:"Жаңа өтінім қосу", add:"Өтінім қосу",
+  list:"Өтінімдер тізімі", title:"Өтінім атауы",
+  amount:"Сомасы (₸)", person:"Жауапты қызметкер",
+  done:"Орындалды", pending:"Күтуде",
+  delete:"Жою", error:"Барлық өрісті дұрыс толтырыңыз!"
+ },
+ ru: {
+  form:"Добавить заявку", add:"Добавить заявку",
+  list:"Список заявок", title:"Название заявки",
+  amount:"Сумма (₸)", person:"Ответственный",
+  done:"Выполнено", pending:"Ожидает",
+  delete:"Удалить", error:"Заполните все поля правильно!"
+ }
+};
+
+function save() {
+  localStorage.setItem("requests", JSON.stringify(requests));
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.replaceChildren();
+
+  requests.forEach((r, i) => {
+    const item = document.createElement("div");
+    item.className = "item";
+
+    const name = document.createElement("strong");
+    name.textContent = r.title;
+
+    const info = document.createElement("p");
+    info.textContent = r.amount + " ₸ · " + r.person;
+
+    const status = document.createElement("p");
+    status.textContent = r.done ? words[lang].done : words[lang].pending;
+    if (r.done) status.className = "done";
+
+    const complete = document.createElement("button");
+    complete.textContent = words[lang].done;
+    complete.onclick = () => {
+      requests[i].done = !requests[i].done;
+      save();
+      render();
+    };
+
+    const remove = document.createElement("button");
+    remove.textContent = words[lang].delete;
+    remove.onclick = () => {
+      requests.splice(i, 1);
+      save();
+      render();
+    };
+
+    item.append(name, info, status, complete, remove);
+    list.append(item);
+  });
+}
+
+document.getElementById("add").onclick = () => {
+  const title = document.getElementById("request").value.trim();
+  const amount = Number(document.getElementById("amount").value);
+  const person = document.getElementById("person").value.trim();
+
+  if (!title || !person || !Number.isFinite(amount) || amount <= 0) {
+    alert(words[lang].error);
+    return;
+  }
+
+  requests.push({
+    title, amount, person,
+    date: new Date().toLocaleDateString(),
+    done: false
+  });
+
+  save();
+  render();
+
+  document.getElementById("request").value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("person").value = "";
+};
+
+document.getElementById("language").onclick = () => {
+  lang = lang === "kk" ? "ru" : "kk";
+  document.getElementById("formTitle").textContent = words[lang].form;
+  document.getElementById("add").textContent = words[lang].add;
+  document.getElementById("listTitle").textContent = words[lang].list;
+  document.getElementById("request").placeholder = words[lang].title;
+  document.getElementById("amount").placeholder = words[lang].amount;
+  document.getElementById("person").placeholder = words[lang].person;
+  document.getElementById("language").textContent =
+    lang === "kk" ? "Русский" : "Қазақша";
+  render();
+};
+
+render();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+</body>
+</html>
